@@ -1,0 +1,186 @@
+Beginning with version 0.2, 3e supports a kind of formatted output for easy front-end interaction.
+
+To change the way output is issued to the standard output, the option -backend must be added.
+
+Standard output will always output information, never display error messages. Errors are submited to standard error.
+
+The exit code for 3e is 1 if the operation could be performed succesfully, and 0 if there were any error condition. Standard error will have the text describing the error.
+
+Formatted output consists on text and/or number fields, separated by a "separator character". Output can be one or more text lines. The last field on each text line does not end with a separator character, but it will run to the end of the line (a \n character).
+
+Number fields will always be in decimal (10-base format).
+
+There may be empty fields. They are denoted by placing no symbols between two separator characters, or between a separator character and the end of line.
+
+The separator character defaults to ',' (comma). This can be changed with the -sep:N option, where N is the ASCII code for the new separator character (not yet implemented).
+
+
+Command output description
+--------------------------
+
+Scanning disks:
+--------------
+
+Normal output: 3e scan
+Detected PLUSIDEDOS partition table on \\.\M: . Size: 61 MB
+
+With -backend option: 3e scan -backend
+
+1
+\\.\M:,64356352
+
+The first line contains a single number which represents the number of lines to follow (number of drives detected).
+Each line has two fields: a text field which contains the special file for the drive detected, and its capacity (the sum of all partitions within it) in bytes.
+
+
+Listing partitions (from now, we will use \\.\M: as our disk in these examples):
+------------------
+
+Normal output: 3e \\.\m: showptable
+
+Disk geometry (C/H/S): 491/2/128
+
+PARTITION TABLE
+
+Num. Name             Type    CH Begin  CH End   LBA Begin LBA End   Size
+---------------------------------------------------------------------------
+   0 PLUSIDEDOS       System     0/0       0/0   0         127       0   MB
+   1 juegos           +3DOS C    0/1     128/0   128       32895     16  MB
+   2 utils            +3DOS D  128/1     256/0   32896     65663     16  MB
+   3 swap             Swap     256/1     272/0   65664     69759     2   MB
+   4 chica            +3DOS    272/1     280/0   69760     71807     1   MB
+   5 ---------------- FREE     280/1     490/1   71808     125695    26  MB
+
+2 partition entries remain unassigned.
+
+With -backend option: 3e \\.\m: showptable -backend
+
+491,2,128
+6,2
+PLUSIDEDOS,1,,0,0,0,0,0,127,65536
+juegos,3,C,0,1,128,0,128,32895,16777216
+utils,3,D,128,1,256,0,32896,65663,16777216
+swap,2,,256,1,272,0,65664,69759,2097152
+chica,3,,272,1,280,0,69760,71807,1048576
+----------------,255,,280,1,490,1,71808,125695,27590656
+
+The first line contains the geometry for this disk: cylinders, heads and sectors.
+
+The second line contains the number of partitions to follow, and the number of free partition entries on disk.
+
+Each partition entry line contains the same fields as the normal output, beginning with the "name" field.
+
+The first field, the name field can be up to 16 characters.
+
+The second field is the partition type, which must be decoded according with this table (warning: numbers here in hexadecimal):
+
+#00 	Unused partition/free handle.
+#01 	System partition.
+#02 	Swap partition.
+#03 	+3DOS partition.
+#04 	CP/M partition.
+#05 	Boot partition.
+#10 	MS-DOS (FAT16) partition.
+#20 	UZI(X) partition.
+#30 	TR-DOS diskimage partition. Usually 640kB. Sector offset.
+#31 	SAMDOS diskimage partition (B-DOS record), 800kB. Sector offset.
+#32 	MB-02 diskimage partition. Usually 1804kB. Sector offset.
+#FE 	Bad disk space.
+#FF 	Free disk space.
+
+The third field is either a character from A to Z, or a null field. If not null, this field is the drive letter maped to this partition.
+
+The rest of the fields follow the same order as in the normal output. The size field is expressed in bytes. The size field of the partition whose type is #FF actually is the amount of free space on disk, that is, the space not allocated to any partition.
+
+
+Gathering partition details
+---------------------------
+
+Normal output: 3e \\.\m: showpentry juegos
+
+DETAILS FOR PARTITION: juegos
+Type: +3DOS mapped to C:
+First LBA address: 128
+Last LBA address: 32895
+Size (MBytes): 16 MB
+Reserved bytes from begining of partition: 0
+Block size: 8192 bytes
+Directory entries: 512
+Offset to data area (directory size): 4000h
+Data size for this filesystem: 16711680 bytes.
+
+XDBP parms:
+ SPT : 512               BSH : 6
+ BLM : 63                EXM : 3
+ DSM : 2039              DRM : 511
+ AL0 : 192               AL1 : 0
+ CKS : 32768             OFF : 0
+ PSH : 2                 PHM : 3
+ Sideness : 0                    Tracks per side : 255
+ Sectors per track : 128         First sector # : 0
+ Sector size : 512               GAP length R/W : 0
+ GAP length fmt : 0              Multitrack : 0
+ Freeze flag : 0
+
+
+With -backend option: 3e \\.\m: showpentry juegos -backend
+
+juegos,3,C,128,32895,16777216,0,8192,512,16384,16711680,512,6,63,3,2039,511,
+192,0,32768,0,2,3,0,255,128,0,512,0,0,0,0
+
+The second field is the partition type, which currently must be 3 (+3DOS partition). The third field is the drive letter mapped to this partition, if any (see previous command). 
+
+The rest of fields follow the same order as in the normal output. There are values that are displayed using MB units, or using hexadecimal notation, when in normal output. In backend output, these values are always in decimal, and byte-based (when applicable).
+
+The XDPB params are listed left to right, top to bottom (SPT, then BSH, then BLM, then EXM, etc...)
+
+
+Directoy listing
+----------------
+
+Normal output: 3e \\.\m: dir juegos
+
+Directory for juegos
+
+Name          Disksize  Att  Ver  HdSize    Type        RSize  Start  Vars
+---------------------------------------------------------------------------
+ROM     .     16512          1.0  16512     Bytes       16384  0      32860
+CIRCULO .SCR  7040           1.0  7040      Bytes       6912   16384  32903
+CHCODE  .     2560           1.0  2458      Bytes       2330   49406  32768
+EDL     .Z80  131200         Headerless file.
+CHAIN   .     256            1.0  205       Program     77     1      77
+CHAIN   .SNA  49280          Headerless file.
+EDL     .SCR  7040           1.0  7040      Bytes       6912   16384  32768
+
+
+With -backend option: 3e \\.\m: dir juegos -backend
+
+7
+ROM,16512,   ,1,0,16512,3,16384,0,32860
+CIRCULO.SCR,7040,   ,1,0,7040,3,6912,16384,32903
+CHCODE,2560,   ,1,0,2458,3,2330,49406,32768
+EDL.Z80,131200,   ,1,0,131200,255,131200,0,32768
+CHAIN,256,   ,1,0,205,0,77,1,77
+CHAIN.SNA,49280,   ,1,0,49280,255,49280,0,32768
+EDL.SCR,7040,   ,1,0,7040,3,6912,16384,32768
+
+The first line contains the number of files in this directory listing.
+For each directory entry:
+
+Each field follows the same order as in the normal output.
+
+The third field is a text of exactly 3 characters. They are the file attributes. Supported attributes are R,S and A (if present, they will be in this order within the text field). A non-present attribute will display as a "space" ' '.
+R: Read-only file.
+S: System file.
+A: Archived file.
+
+Two kind of files can be present in a directory: files with a +3DOS header, and headerless files. The rest of fields are only valid for +3DOS files. The "type" field (field #7) denotes the type of the file as of this table:
+0: Program
+1: Number array
+2: Character array
+3: Bytes
+255: Headerless file.
+
+If the type field is 255, this file must be displayed as "headerless file" and all remaining +3DOS header fields for this file must be ignored.
+
+

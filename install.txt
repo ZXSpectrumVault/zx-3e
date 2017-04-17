@@ -1,0 +1,21 @@
+Windows: just copy the provided EXE file somewhere in your PATH. You can
+make your own executable by compiling the provided source file. Tested on
+MinGW32 (Free C IDE) and Visual Studio.
+
+Linux:
+- Compiling: gcc -DLINUX -o 3e 3e.c
+- Installing for non priviledge usage: copy the resulting binary file '3e'
+somewhere in your path, and use "sudo" for accessing physical disks.
+- Installing for priviledge usage (using a root account):
+    cp 3e /usr/bin
+    chown 0:0 /usr/bin/3e
+    chmod u+s /usr/bin/3e
+Installing this way avoids to use "sudo" everytime you want to access
+physical disks, but be WARNED: it's not recommended to do this in a public
+accessible host, as this program uses functions that rely on a well
+constructed TMP environment variable. A mallicious user can fool the program
+to write anywhere on the disk by using a specially crafted value for TMP.
+
+Mac OS X: yet to be tested, but should compile and work except for the "scan"
+command. Compile issuing: cc -o 3e 3e.c
+ 	

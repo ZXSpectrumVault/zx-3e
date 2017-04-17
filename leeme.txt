@@ -1,0 +1,285 @@
+Este fichero puede estar desfasado. Para una referencia más actualizada, lea "readme.txt".
+
+
+'3e': Utilidad para el manejo de ficheros en una tarjeta de memoria formateada
+en un Spectrum +3E.
+
+(C)2009 Miguel Angel Rodriguez Jodar (mcleod_ideafix). Bajo licencia GPL.
+Para soporte, por favor diríjase a http://www.zxprojects.com
+
+
+CAMBIOS
+
+8 Enero 2012
+- Corregido un error que hacía que se devolviera error al detectar una imagen
+de disco duro con extensión HDF pero que en realidad debe ser manejada como RAW. StrowSaw rehusaba manejarla por esta razón.
+- Añadido soporte inicial para manejar discos compartidos (partición FAT +
+disco IDEPLUSDOS). Se usa como tipo de partición para IDEPLUSDOS el 7F, tal
+y como sugiere Garry Lancaster.
+- Añadido soporte inicial para tratar discos con "halved sectors". Se reconocen
+y pueden usarse imágenes HDF que se identifiquen correctamente como imágenes con
+"halved sectors". Aún no se soportan discos físicos que sean usados en interfaces
+de 8 bits.
+
+23 Julio 2009. 
+- Añadida compilación condicional para soportar mejor la compilación en Linux.
+Para compilarlo, basta con hacer:
+gcc -o 3e 3e.c
+Estooo... no echeis cuenta al aviso sobre usar tempnam... ;)
+- Compila sin problemas en MinGW32 (probado en C-Free 4)
+- Solucionado un problema por usar tablas muy grandes. Ahora debería ser capaz
+de funcionar con cualquier tamaño de tabla de particiones.
+- Se ha mejorado el soporte de ficheros HDF. Ahora se detecta correctamente
+si se está usando una imagen HDF, se comprueba que no se esté usando la versión
+"sectores partidos por la mitad", y se calcula correctamente el offset
+al comienzo real de los datos (gracias a Velesoft por ofrecer esta
+información :)
+
+22 Julio 2009. Versión 0.1 alfa. Primera versión pública.
+- Funciona en Windows 7. Debería funcionar en versiones anteriores de Windows
+(Vista y XP principalmente). Debería también funcionar en Linux, aunque esto
+aún no se ha comprobado.
+
+
+USO
+
+3e image_file command [args...]
+
+"image_file" puede ser una imagen de disco en formato HDFo RAW, o un
+dispositivo físico. Para el último caso, se debe conocer el fichero de bloques
+asociado al dispositivo.
+
+En Linux, los ficheros de bloques asociados a tarjetas de memoria se suelen
+nombrar como /dev/sda, /dev/sdb, etc. Use la orden 'dmesg' justo después de
+haber insertado la tarjeta de memoria para averiguar qué fichero de dispositivo
+le asigna Linux. Debe tener permisos de lectura/erscritura en dicho fichero.
+
+En Windows, los ficheros de bloques asociados a los discos que han sido detec-
+tados por Windows tienen la siguiente notación: \\.\D: donde D: es la unidad de
+disco que Windows asigna a la tarjeta al insertarla. No olvide CANCELAR cual-
+quier intento de Windows de formatear la tarjeta, ya que al no poder leerla,
+piensa que necesita formateo. Recuerde: NO formatee.
+
+Comandos disponibles en esta versión:
+-------------------------------------
+ showptable . Muestra la tabla de particiones de PLUSIDEDOS.
+ showpentry n . Muestra detalles de la partición #n
+           (sólo se muestran detalles para particiones +3DOS.)
+ dir n . Muestra el directorio para el sistema de ficheros de la partición #n
+           (Sólo se soportan sistemas de ficheros +3DOS.)
+ get npart:file . Lee un fichero de una partición en formato +3DOS en la tarje-
+                  ta de memoria o imagen de disco dada, y la copia en el direc-
+                  torio actual del PC.
+ put file npart:file . Escribe un fichero desde el PC a la tarjeta de memoria o
+            imagen de disco, con el nombre especificado y en la partición espe-
+            cificada.
+ putbin file npart:file [start] . Como la anterior, pero añade al fichero des-
+           tino una cabecera compatible +3DOS. Opcionalmente se puede estable-
+           cer una dirección de comienzo que se grabará en la cabecera. El tipo
+           de fichero se establece a "Bytes"-
+ puttap file npart . Lee un fichero TAP y escribe su contenido, fichero a fi-
+           chero, a la partición especificada dentro de la tarjeta de memoria o
+           imagen de disco. Cada fichero se copia con su correspondiente cabe-
+           cera, tal como la tenía en la cinta. Los bloques sin cabecera se
+           toman como ficheros "Byte" y se nombran usando el nombre original
+           del fichero TAP y añadiendo como extensión 1,2,3...
+ del npart:file . Borra un fichero en la partición especificada.
+
+Los nombres de ficheros que se usan dentro de un sistema de ficheros +3DOS
+no permiten determinados caracteres. Durante la escritura, los caracteres
+del nombre que se consideren extraños se sustituyen por '_'.
+
+
+ERRORES
+
+Un montón, ya que esto es versión alfa, y sólo tiene unas horas de testeo (en
+el momento de escribir esto). En este momento no se hace ningún chequeo de con-
+sistencia sobre el sistema de ficheros en el que se lee o escriben datos, así
+que cualquier comando que actúe sobre un sistema de ficheros +3DOS corrupto por
+alguna razón, seguramente fallará de la forma más aleatoria posible.
+
+El soporte para ficheros de imagen HDF es extremadamente simple, ya que sólo
+asumo que un HDF es una imagen RAW de un disco, con una cabecera de 128 bytes
+al principio, que ignoro (me la salto) completamente.
+
+El soporte para dispositivos físicos (tarjetas de memoria reales) se deja un
+poco al libre albedrío del sistema operativo. No se hacen chequeos específicos
+para asegurarse de que todas las lecturas y escrituras comienzan en una posi-
+ción múltiplo de 512 bytes, ni se asegura de que la longitud de dichas opera-
+ciones sea también múltiplo de 512. Windows necesita que todas las operaciones
+cumplan con estos requisitos. Por otra parte, el soporte para dispositivos fí-
+sicos está limitado a aquellos que ofrezcan al sistema operativo un acceso li-
+lineal, y que tengan un tamaño de sector de 512 bytes.
+
+No hay soporte para tarjetas de memoria o discos formateados en interfaces que
+sólo usen 8 bits para el bus de datos y se pierda la mitad de la capacidad del
+disco. Por la misma razón, el formato de imagen de disco HDF256 no se soporta.
+
+
+EJEMPLOS (Windows)
+
+1) Muestra la tabla de particiones de una tarjeta de memoria detectada como 
+disco M:
+
+C:\>3e \\.\m: showptable
+
+Disk geometry (C/H/S): 491/2/128
+
+PARTITION TABLE
+
+#  Name             Type      C/H begin   C/H end   LBA Begin LBA End   Size
+------------------------------------------------------------------------------
+0  PLUSIDEDOS       System      0/  0       0/  0   0         127       0   MB
+1  juegos           +3DOS C:    0/  1     128/  0   128       32895     16  MB
+2  utils            +3DOS D:  128/  1     256/  0   32896     65663     16  MB
+3  swap             Swap      256/  1     272/  0   65664     69759     2   MB
+4  chica            +3DOS     272/  1     280/  0   69760     71807     1   MB
+5  ---------------- FREE      280/  1     490/  1   71808     125695    26  MB
+
+2 partition entries remain unassigned.
+
+La letra de unidad al lado de la etiqueta "+3DOS" que aparece en algunas par-
+ticiones significa que esa partición está mapeada permanentemente a esa unidad
+de disco. Este mapeado se puede controlar con el comando MOVE "unidad:" IN 
+"particion" y MOVE "unidad:" OUT (consulte el manual del +3E para más informa-
+ción)
+
+
+2) Muestra detalles sobre la partición #1 ("juegos")
+
+C:\>3e \\.\m: showpentry 1
+
+DETAILS FOR PARTITION: juegos
+Type: +3DOS mapped to C:
+First LBA address: 128
+Last LBA address: 32895
+Size (MBytes): 16 MB
+Reserved bytes from begining of partition: 0
+Block size: 8192 bytes
+Directory entries: 512
+Offset to data area (directory size): 4000h
+Data size for this filesystem: 16711680 bytes.
+
+XDBP parms:
+ SPT : 512               BSH : 6
+ BLM : 63                EXM : 3
+ DSM : 2039              DRM : 511
+ AL0 : 192               AL1 : 0
+ CKS : 32768             OFF : 0
+ PSH : 2                 PHM : 3
+ Sideness : 0                    Tracks per side : 255
+ Sectors per track : 128         First sector # : 0
+ Sector size : 512               GAP length R/W : 0
+ GAP length fmt : 0              Multitrack : 0
+ Freeze flag : 0
+
+Estos datos habitualmente no serán necesarios para el usuario final. Se 
+incluye a efectos informativos, para ayudar en la depuración del programa.
+
+
+3) Lista el directorio de la partición #1 (debe ser una partición +3DOS)
+
+C:\>3e \\.\m: dir 1
+Directory for juegos
+
+Name          Disksize  Att  Ver  HdSize    Type        RSize  Start  Vars
+---------------------------------------------------------------------------
+ROM     .     16512          1.0  16512     Bytes       16384  0      32860
+CIRCULO .SCR  7040           1.0  7040      Bytes       6912   16384  32903
+CHCODE  .     2560           1.0  2458      Bytes       2330   49406  32768
+EDL     .Z80  131200         Headerless file.
+CHAIN   .     256            1.0  205       Program     77     1      77
+CHAIN   .SNA  49280          Headerless file.
+EDL     .SCR  7040           1.0  7040      Bytes       6912   16384  32768
+
+Simplificando, hay dos tipos de ficheros: ficheros compatibles con +3DOS, los
+cuales tienen una cabecera que incluye la mayoría de los datos que se ven en el
+listado de un directorio, y ficheros sin cabecera. Los últimos son ficheros
+cuyo contenido es "tal cual" el que tenían en el PC, sin cabeceras añadidas.
+Por ejemplo, ficheros .Z80 yh .SNA, para ser usados con el comando SPECTRUM.
+
+
+4) Copia un fichero llamado EDL.SCR desde la partición 1 de la tarjeta de memo-
+ria, al directorio actual del PC.
+
+C:\>3e \\.\m: get 1:edl.scr
+
+El nombre del fichero destino es el mismo que el que tenía en la tarjeta. La
+cabecera del fichero, si es que la tenía, se copia junto con los datos del pro-
+pio fichero en sí. Si la cabecera no es necesaria, basta con suprimir los 
+primeros 128 bytes.
+
+
+5) Copia un fichero llamado "screen.bin" localizado en el directorio actual del
+PC, a la partición y ficheros especificados. El fichero destino tendrá una ca-
+becera compatible con +3DOS, y se establece como dirección de inicio en la ca-
+becera el valor 16384 (ya que el fichero original es un volcado de pantalla).
+
+C:\>3e \\.\m: putbin screen.bin 2:screen 16384
+
+Este fichero se puede cargar desde el +3 con:
+LOAD "d:screen" CODE
+(asumiendo claro está, que la partición 2 esté mapeada previamente al disco D:)
+
+Si no se suministra una dirección inicial en el comando putbin, se asume que
+es 0.
+
+Si no se desea cabecera en el fichero destino (por ejemplo para copiar un .Z80
+o un .SNA a la tarjeta), use el comando "put" en su lugar.
+
+
+6) Borra un fichero llamado "screen" situado en la partición #2.
+C:\>3e \\.\m: del 2:screen
+
+
+7) Vuelca el contenido de un archivo TAP, fichero a fichero, hacia la partición
+4 de la tarjeta de memoria, y posteriormente, lista el directorio de dicha par-
+tición.
+
+C:>3e \\.\m: puttap "c:\SPECTRUM\Games\h\HORIZONT.TAP" 4
+
+(al cabo de un par de segundos...)
+
+C:>3e \\.\m: dir 4
+Directory for chica
+
+Name          Disksize  Att  Ver  HdSize    Type        RSize  Start  Vars
+---------------------------------------------------------------------------
+CARAA   .     256            1.0  249       Program     121    10     121
+ARCOIRIS.     33024          1.0  32993     Bytes       6912   16384  32865
+LOGO    .     33024          1.0  33007     Bytes       6912   16384  32879
+HARDWARE.     4224           1.0  4188      Program     4060   9100   4060
+        .     33152          1.0  33095     Bytes       300    32256  32967
+HWS     .     33024          1.0  33000     Bytes       6912   16384  32872
+LECCION1.     8064           1.0  7982      Program     7854   9100   7854
+MCODE   .     33024          1.0  32909     Bytes       299    32000  32781
+LECCION2.     7552           1.0  7513      Program     7385   9100   7385
+LECCION3.     7936           1.0  7859      Program     7731   9100   7731
+LECCION4.     7808           1.0  7777      Program     7649   9100   7649
+DICCIONA.     3072           1.0  2984      Program     2856   9980   2856
+D       .     33024          1.0  32936     Bytes       400    32256  32808
+FILE    .     33024          1.0  33001     Char array  5103   50690  32873
+CARAB   .     3072           1.0  2989      Program     2861   9100   2861
+MURO    .     4480           1.0  4370      Program     4317   300    4242
+WALLG   .     33152          1.0  33042     Bytes       168    65368  32914
+C       .     33152          1.0  33093     Bytes       300    32256  32965
+CLASIFIC.     7680           1.0  7621      Program     7493   9050   7493
+CHAR    .     33024          1.0  32965     Bytes       168    65368  32837
+EVOLUCIO.     6656           1.0  6541      Program     6413   9050   6413
+BITS    .     33024          1.0  32909     Bytes       32     65368  32781
+LIFE    .     4992           1.0  4914      Program     4786   9010   4786
+P       .     33152          1.0  33092     Bytes       300    32196  32964
+DIBUJAR .     4992           1.0  4933      Program     4805   8000   4805
+MONTECAR.     5504           1.0  5444      Program     5316   9110   5316
+GENERADO.     5760           1.0  5703      Program     5575   9100   5575
+ONDAS   .     4480           1.0  4423      Program     4295   9100   4295
+M       .     33152          1.0  33095     Bytes       300    32256  32967
+
+Este comando permite copiar cintas completas a disco, pero debe recordar que la
+copia no altera los contenidos de los programas, lo que significa que las sen-
+tencias LOAD "" siguen estando ahí. Esto es importante, ya que el concepto de
+"cargar el siguiente bloque" que maneja el comando LOAD "" no puede usarse en
+un medio de acceso aleatorio, en el cual todas las órdenes de carga deben in-
+cluir el nombre. De no hacerlo, recibirá el mensaje "F Invalid file name".
+Algo parecido sucederá con las cintas en las que haya bloques sin cabecera. En
+estos casos habrá que hacer modificaciones más profundas.
